@@ -793,31 +793,107 @@
   .header-subtitle { display: none; }
 
   .main {
-    padding: var(--space-xl) var(--space-md);
-    gap: var(--space-xl);
+    padding: var(--space-lg) var(--space-md);
+    gap: var(--space-lg);
+  }
+
+  .input-panel-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .input-panel-footer > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .input-panel-footer .btn-primary {
+    width: 100%;
+  }
+
+  .empty-state-steps {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .empty-state-step {
+    max-width: 100%;
+    width: 100%;
   }
 
   .flashcard-face {
-    padding: var(--space-xl) var(--space-lg);
+    padding: var(--space-xl) var(--space-md);
     min-height: 220px;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .flashcard-face-text { font-size: var(--text-lg); }
 
+  .flashcard-nav {
+    display: flex;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+
+  .flashcard-nav .btn {
+    flex: 1;
+  }
+
   .quiz-question-card { padding: var(--space-lg); }
 
-  .quiz-question-text { font-size: var(--text-lg); }
+  .quiz-question-text {
+    font-size: var(--text-lg);
+    word-break: break-word;
+  }
+
+  .quiz-option {
+    padding: var(--space-md);
+    min-height: 48px;
+    word-break: break-word;
+  }
+
+  .quiz-nav {
+    display: flex;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+
+  .quiz-nav .btn {
+    flex: 1;
+  }
 
   .quiz-score-card { padding: var(--space-xl); }
+
+  .quiz-score-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .quiz-score-actions .btn {
+    width: 100%;
+  }
 
   .tabs { width: 100%; }
   .tab-btn { flex: 1; text-align: center; }
 
-  .results-header { flex-direction: column; }
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-md);
+  }
 
-  .empty-state-steps { flex-direction: column; align-items: center; }
+  .error-actions {
+    width: 100%;
+  }
 
-  .flashcard-nav { gap: var(--space-sm); }
+  .error-actions .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 400px) {
