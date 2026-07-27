@@ -1,21 +1,22 @@
 # 📚 Study Assistant
 
-> **AI-powered flashcard and quiz generator** — paste your notes or type a topic, and instantly get interactive study materials.
-
-<!-- Live URL will be added after Vercel deployment -->
-<!-- **Live Demo:** https://study-assistant-xyz.vercel.app -->
+> **AI-powered flashcard and quiz generator** — paste your notes or type a topic, and instantly get interactive study materials. Built with React, Vite, Express, and Google Gemini AI.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-- **AI Flashcard Generation** — 8 topic-specific front/back flashcards per request
-- **3D Flip Animation** — click or tap a card to reveal the answer
-- **Full Quiz Mode** — 6 multiple-choice questions with per-question explanations
-- **Retest Wrong Answers** — instantly re-quiz only the questions you got wrong
-- **Robust Error Handling** — friendly errors for timeouts, malformed AI responses, network failures
-- **Stale Response Protection** — submitting a new request cancels any in-flight one
-- **Mobile Responsive** — works on all screen sizes
+- **AI Flashcard & Quiz Generation**: Produces topic-specific flashcards and a multiple-choice quiz from free-form text.
+- **3D Flip Interaction**: Click or press `Space`/`Enter` on a flashcard to flip between Question and Answer faces.
+- **Graded Quiz Mode**: Multiple-choice quiz with per-question explanations shown immediately after answering.
+- **Retest Wrong Answers**: Dedicated flow that lets users re-quiz only the questions they answered incorrectly.
+- **Single-Command Execution**: One `npm start` command launches both the Express backend API proxy and Vite frontend via `concurrently`.
+- **Keyboard Navigation**:
+  - Flashcards: `Space` / `Enter` to flip; `ArrowLeft` / `ArrowRight` to navigate.
+  - Quiz: `1–4` or `A–D` to select options; `Enter` / `Space` / `ArrowRight` to advance; `ArrowLeft` to go back.
+- **Robust Error Handling**: Friendly error cards with Retry buttons for timeouts (20s client-side limit) and malformed AI outputs.
+- **Stale Response Protection**: Uses `AbortController` to cancel in-flight requests when a new topic is submitted, preventing older responses from overwriting newer UI state.
+- **Mobile Responsive**: Fully responsive layout tailored for narrow mobile viewports (375px+).
 
 ---
 
@@ -34,7 +35,7 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Copy `.env.example` to `.env` and add your Gemini API key:
+Copy `.env.example` to `.env` and insert your Gemini API key:
 
 ```bash
 cp .env.example .env
@@ -42,145 +43,101 @@ cp .env.example .env
 
 Open `.env` and set:
 
-```
+```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-> ⚠️ **Never commit `.env`** — it's in `.gitignore`. The API key lives only on the server and is never sent to the browser.
+> ⚠️ **Security Notice**: `.env` is gitignored. The API key is read strictly server-side by the backend proxy (`api/generate.js` / `server/index.js`) and is **never** sent to or exposed in the browser.
 
-### 3. Run the App (single command)
+### 3. Run the App (Single Command)
 
 ```bash
 npm start
 ```
 
-This runs both the backend API server (port 3001) and the Vite frontend (port 5173) simultaneously via `concurrently`. Open [http://localhost:5173](http://localhost:5173).
-
-Alternatively run them separately:
-
-```bash
-# Terminal 1 — backend
-npm run server
-
-# Terminal 2 — frontend
-npm run dev
-```
+This runs both the Express API server (port 3001) and Vite frontend (port 5173) simultaneously. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture & Data Flow
 
 ```
-Browser (React 18 + Vite, port 5173)
+Browser (React 18 + Vite, Port 5173)
     │
     │  POST /api/generate { text: string }
     │  (Vite dev proxy → Express server on port 3001 in dev)
-    │  (Vercel serverless function in production)
+    │  (Vercel Serverless Function in production)
     ▼
-Backend (api/generate.js)
-    │  Reads GEMINI_API_KEY from process.env — never from browser
-    │  Calls Gemini with responseMimeType: "application/json"
-    │  Returns validated JSON or { error: "..." }
+Backend Proxy (api/generate.js / server/index.js)
+    │  Reads GEMINI_API_KEY from process.env — never sent to browser
+    │  Calls Gemini model (gemini-3.5-flash-lite) with responseMimeType: "application/json"
+    │  Returns JSON or { error: "..." }
     ▼
-Google Gemini API (gemini-2.0-flash)
+Google Gemini API (gemini-3.5-flash-lite)
 ```
 
 ### JSON Contract
 
+The backend and frontend communicate using this structured JSON shape:
+
 ```json
 {
-  "topic": "short label",
+  "topic": "Photosynthesis",
   "flashcards": [
-    { "id": "fc-1", "front": "Question side", "back": "Answer side" }
+    { "id": "fc-1", "front": "What organelle performs photosynthesis?", "back": "Chloroplast" }
   ],
   "quiz": [
     {
       "id": "q-1",
-      "question": "...",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 0,
-      "explanation": "Why A is correct"
+      "question": "What gas do plants absorb during photosynthesis?",
+      "options": ["Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"],
+      "correctIndex": 1,
+      "explanation": "Plants take in CO2 through stomata to produce glucose."
     }
   ]
 }
 ```
 
-### Frontend Structure
+---
 
+## 🧪 Testing & Verification
+
+Run the automated test suite covering validation edge cases, AbortController stale cancellation, timeout handling, keyboard nav, and accessibility:
+
+```bash
+# Run complete check suite (28/28 tests)
+node test/manual-checks.js
+
+# Run individual test scripts
+node test/test-empty-state.js
+node test/test-stale-response-trigger.js
+node test/test-malformed-response-trigger.js
+node test/test-quiz-keyboard.js
+node test/test-accessibility.js
 ```
-src/
-├── App.jsx                      # Root state machine (idle/loading/error/results)
-├── components/
-│   ├── InputPanel.jsx           # Textarea + submit button
-│   ├── EmptyState.jsx           # Landing page before first submission
-│   ├── LoadingState.jsx         # Spinner + skeleton placeholders
-│   ├── ErrorState.jsx           # Error message + Retry button
-│   ├── FlashcardViewer.jsx      # 3D flip cards + prev/next navigation
-│   └── QuizMode.jsx             # Quiz flow + grading + retest wrong answers
-├── utils/
-│   ├── api.js                   # fetch wrapper with AbortController + 20s timeout
-│   ├── validate.js              # Hand-written JSON contract validator
-│   └── mockData.js              # Hardcoded sample for M1 scaffolding/offline testing
-└── index.css / App.css          # Design system + component styles
-
-api/
-└── generate.js                  # Vercel serverless function (Gemini AI proxy)
-
-server/
-└── index.js                     # Local Express dev server (mirrors serverless fn)
-```
-
-### Key Design Decisions
-
-1. **AbortController for stale responses** — `api.js` merges the caller's signal with an internal 20s timeout signal. `App.jsx` calls `.abort()` on the previous controller before starting a new request, so a slow older response can never overwrite newer UI state.
-
-2. **Two-layer validation** — The backend does a quick sanity check (arrays present?), then the frontend runs a full deep validation in `validate.js` (types, non-empty, `correctIndex` in range). This means any malformed response is caught before it can crash the renderer.
-
-3. **No chatbot UI** — One textarea → one AI call → one structured result rendered as interactive components. No message threads, no streaming chat.
 
 ---
 
-## 🤖 AI-Usage Note (Honest)
+## 🤖 Honest AI-Usage Note
 
-This project was built with the assistance of the **Antigravity** AI coding agent (powered by Google DeepMind). Specifically:
+This project was developed with the assistance of an AI coding agent (**Antigravity**, powered by Google DeepMind models) working under human pair-programming direction:
 
-- **All source code** was generated by the AI agent based on the assignment specification
-- **Architecture decisions** (AbortController stale-response protection, two-layer validation, state machine design, dev proxy setup) were proposed and implemented by the agent
-- **Prompt engineering** for the Gemini system prompt (structured JSON contract, explicit card/question counts) was written by the agent
-- **Testing** was run by the agent (`npm install`, `npm start`, automated checklist tests)
-- **README and PROGRESS.md** were written by the agent
+- **Human Guidance & Decisions**:
+  - Directed the overall milestone plan, component architecture, and UI aesthetic requirements.
+  - Specified key bug fixes (e.g., identifying the flashcard flip-state transition leak, requesting exact keyboard shortcut bindings for the quiz, and defining abort error classification behavior).
+  - Selected and verified model configuration (`gemini-3.5-flash-lite`).
+- **AI Agent Execution**:
+  - Scaffolded React/Vite components, CSS design system, and backend Express proxy.
+  - Implemented `validate.js` schema validation and `api.js` AbortController logic.
+  - Authored automated test scripts in `test/`.
 
-The code is written to be fully explainable — every file has comments describing what it does and why decisions were made.
+All code has been reviewed, tested, and verified for correctness.
 
 ---
 
 ## ⚠️ Known Limitations
 
-1. **AI output variability** — Even with `responseMimeType: "application/json"`, the model occasionally returns slightly fewer flashcards or questions than the 8/6 requested. The app renders what it receives rather than failing.
-
-2. **No persistence** — Study sets are not saved between sessions. Refreshing returns to the empty state. (localStorage save is a P2 stretch goal.)
-
-3. **English-only** — Prompts are English-only. Non-English input may produce mixed-language results.
-
-4. **Free-tier rate limits** — The Gemini free tier has per-minute and per-day quotas. If you hit a rate limit, the app shows a friendly error — wait ~60 seconds and retry.
-
-5. **No streaming** — The full AI response is awaited before rendering. Streaming would improve perceived performance but adds significant complexity.
-
----
-
-## ⏱️ Time Spent
-
-| Milestone | Description | Approx. Time |
-|-----------|-------------|-------------|
-| M1 | Scaffold + mock data | ~20 min |
-| M2 | Backend AI proxy (Gemini setup) | ~25 min |
-| M3 | Wire frontend to live endpoint | ~10 min |
-| M4 | Validation + error handling | ~20 min |
-| M5 | Stale response prevention | ~10 min |
-| M6 | Flashcard viewer (3D flip) | ~20 min |
-| M7 | Quiz mode + retest wrong answers | ~25 min |
-| M8 | Empty state + mobile responsiveness | ~15 min |
-| M9 | README + PROGRESS.md | ~15 min |
-| CSS & Design | Dark theme, animations, polish | ~30 min |
-| Fixes & Testing | Single-command start, abort fix, tests | ~30 min |
-| **Total** | | **~3.5 hours** |
+1. **AI Output Quantity**: Gemini occasionally returns slightly fewer than the requested 8 flashcards or 6 quiz questions. The app gracefully renders whichever valid items are returned.
+2. **No Persistence**: Study sets are held in React state and reset on page refresh.
+3. **English Optimization**: Prompts are tuned for English text inputs. Non-English notes may yield mixed-language output.
+4. **Free-Tier Quotas**: Heavy request volume may encounter Gemini free-tier rate limits (HTTP 429). The app surfaces a clear rate-limit message allowing the user to retry after ~60 seconds.

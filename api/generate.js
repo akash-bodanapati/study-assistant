@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     // wrong field shapes or out-of-range correctIndex values.
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash-lite',
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         responseMimeType: 'application/json',

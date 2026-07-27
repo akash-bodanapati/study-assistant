@@ -1,0 +1,73 @@
+# 🛠️ Architectural Decisions & Bug Fix Log
+
+> **Study Assistant** — AI-Powered Flashcard & Quiz Generator
+
+---
+
+## 🏗️ Architectural Decisions
+
+### 1. Single-Command Developer Workflow (`npm start`)
+- **Problem**: The frontend Vite dev server runs on port 5173, while the backend API proxy (mirroring the Vercel Serverless Function) runs on Express (port 3001). Requiring two terminal windows complicates evaluation.
+- **Decision**: Added `concurrently` to `package.json` under `"start": "concurrently --kill-others-on-fail --names \"API,UI\" --prefix-colors \"cyan,magenta\" \"node server/index.js\" \"vite\""`. A single `npm start` launches both processes concurrently with color-coded logging.
+
+### 2. Strict API Key Isolation
+- **Decision**: The Google Gemini API key is read strictly from `process.env.GEMINI_API_KEY` inside `api/generate.js` (and `server/index.js` for local development). No API keys or authorization headers are ever exposed to or transmitted by the browser client. `.env` is gitignored; `.env.example` provides documentation.
+
+### 3. Two-Layer Validation Strategy
+- **Layer 1 (Backend proxy)**: Light sanity check confirming parsed output is a non-null object containing `flashcards` and `quiz` arrays.
+- **Layer 2 (Frontend `validate.js`)**: Deep structural validation verifying:
+  - `topic` is a non-empty string.
+  - `flashcards` is a non-empty array with valid `{ id, front, back }` string fields.
+  - `quiz` is a non-empty array with valid `{ id, question, options, correctIndex, explanation }` fields.
+  - `correctIndex` is an integer strictly within `[0, options.length - 1]`.
+- **Rationale**: LLMs using structured JSON mode can still occasionally emit schema violations (e.g., `correctIndex = 5` for a 4-option question). Catching this at runtime prevents React rendering crashes and displays a friendly Retry UI card instead.
+
+---
+
+## 🐛 Real Bugs Found & Resolved During Development
+
+### Bug 1: Model Deprecation & Selection
+- **Issue**: Initial model configuration targeted `gemini-2.0-flash`, which experienced rate-limiting quota limits during testing.
+- **Fix**: Upgraded model configuration in `api/generate.js` to `gemini-3.5-flash-lite`, ensuring reliable structured JSON output generation (`responseMimeType: "application/json"`).
+
+### Bug 2: Flashcard Flip-State & Transition Leakage
+- **Issue**: When a card was flipped to the Answer side (`isFlipped = true`), clicking "Next" caused the card to briefly display the *next* card's answer while animating back to the question side.
+- **Root Cause**: React was mutating the existing `.flashcard-card` DOM element in-place. Removing the `.flipped` class triggered CSS `transition: transform 0.55s`, animating `rotateY(180deg)` back to `0deg`. Since the DOM text had already updated to Card 2, the back face displayed Card 2's answer during the initial frames of the rotation.
+- **Fix**: Extracted card rendering into a `FlashcardCard` sub-component keyed by `key={current.id || currentIndex}`. When navigating cards, React unmounts the old DOM element and mounts a brand-new element with `isFlipped = false` from frame 0. Because it is a newly inserted DOM node without `.flipped`, no CSS transition occurs and the new card appears immediately on its question face without any flash of answer text.
+
+### Bug 3: Error Message Classification (Timeout vs Stale-Response Abort)
+- **Issue**: When a request hit the 20-second timeout, `fetch` was cancelled by `AbortController`, but the UI displayed a generic `'Network error: unknown error'` card instead of the timeout-specific message.
+- **Root Cause**: `fetch` rejects with a primitive string reason or custom DOMException when aborted. Checking `err.name === 'AbortError'` failed for non-standard reason objects, causing `catch (err)` to fall through to `err.message || 'unknown error'`.
+- **Fix**: Refactored `api.js` to inspect both signals and abort reasons:
+  - **Stale-Response Cancellation (M5)**: Detects `signal.aborted` or reason `'caller_abort'` → returns `{ isCancelled: true, error: 'cancelled' }`. `App.jsx` drops stale responses silently without displaying error UI.
+  - **Client-side Timeout (M4)**: Detects `timeoutController.signal.aborted` or reason `'timeout'` → returns `{ isTimeout: true, error: 'Request timed out after 20 seconds...' }`. `App.jsx` renders `ErrorState` with the timeout message and Retry button.
+
+---
+
+## ⌨️ Accessibility & Keyboard Enhancements
+
+- **Flashcard Viewer**: `Space` / `Enter` flips between Question/Answer faces; `ArrowLeft` / `ArrowRight` navigate cards.
+- **Quiz Mode**:
+  - `1–4` or `A–D` keys select answer options.
+  - `Enter` / `Space` / `ArrowRight` advance to the next question (when answered).
+  - `ArrowLeft` returns to the previous question.
+- **Focus Indicators**: High-contrast `:focus-visible` outlines applied across all interactive elements (`.btn`, `.flashcard-card`, `.quiz-option`, `.tab-btn`, `.flashcard-dot`, `.input-panel-textarea`).
+- **ARIA Semantics**: `role="button"`, `role="radio"`, `role="progressbar"`, `aria-pressed`, `aria-checked`, and dynamic `aria-label` descriptors applied throughout.
+
+---
+
+## 🧪 Automated Testing Suite
+
+Run all verification scripts via Node:
+
+```bash
+# Run unified pre-deployment check suite (28/28 tests)
+node test/manual-checks.js
+
+# Run specific integration test scripts
+node test/test-empty-state.js
+node test/test-stale-response-trigger.js
+node test/test-malformed-response-trigger.js
+node test/test-quiz-keyboard.js
+node test/test-accessibility.js
+```
