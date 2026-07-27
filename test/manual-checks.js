@@ -163,6 +163,16 @@ assert('api.js abort reason is "timeout"', apiSrc.includes("'timeout'") || apiSr
 assert('error message mentions "20 seconds"', apiSrc.includes('20 seconds'));
 
 // ─────────────────────────────────────────────────────────────
+// Test 8: FlashcardViewer keying structure
+// ─────────────────────────────────────────────────────────────
+console.log('\n[8] FlashcardViewer component keying & flip state isolation:');
+
+const viewerSrc = readFileSync(join(__dirname, '../src/components/FlashcardViewer.jsx'), 'utf-8');
+assert('FlashcardCard subcomponent exists', viewerSrc.includes('function FlashcardCard'));
+assert('FlashcardCard is keyed by card.id or currentIndex', viewerSrc.includes('key={current.id'));
+assert('FlashcardCard initializes isFlipped to false on mount', viewerSrc.includes('const [isFlipped, setIsFlipped] = useState(false)'));
+
+// ─────────────────────────────────────────────────────────────
 // Summary
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(50)}`);
