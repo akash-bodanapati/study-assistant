@@ -2,7 +2,8 @@
  * QuizMode.jsx
  * Full quiz flow in one component:
  *  - Presents one question at a time with A/B/C/D letter buttons
- *  - User selects an option, then clicks Next to advance (answer locks in immediately)
+ *  - Keyboard shortcuts: 1–4 (or A–D) select options; Enter / Space / ArrowRight advance; ArrowLeft goes prev
+ *  - User selects an option, then advances (answer locks in immediately)
  *  - Explanation shown inline after answering each question
  *  - Results screen: score, per-question breakdown with correct/wrong indicators
  *  - "Retest wrong answers" — restarts quiz with only incorrectly-answered questions
@@ -10,7 +11,7 @@
  * Props:
  *   questions  {Array}  Array of quiz question objects from the JSON contract
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -33,25 +34,78 @@ export default function QuizMode({ questions }) {
 
   const total   = activeQuestions.length;
   const current = activeQuestions[currentIdx];
-  const hasAnswered = current.id in answers;
-  const selectedIdx = answers[current.id];
+  const hasAnswered = current ? (current.id in answers) : false;
+  const selectedIdx = current ? answers[current.id] : undefined;
 
-  function selectOption(idx) {
-    if (hasAnswered) return; // lock — can't change answer
+  const selectOption = useCallback((idx) => {
+    if (!current || (current.id in answers)) return; // lock — can't change answer
     setAnswers((prev) => ({ ...prev, [current.id]: idx }));
-  }
+  }, [current, answers]);
 
-  function handleNext() {
+  const handleNext = useCallback(() => {
     if (currentIdx < total - 1) {
       setCurrentIdx((i) => i + 1);
     } else {
       setShowResults(true);
     }
-  }
+  }, [currentIdx, total]);
 
-  function handlePrev() {
+  const handlePrev = useCallback(() => {
     if (currentIdx > 0) setCurrentIdx((i) => i - 1);
-  }
+  }, [currentIdx]);
+
+  // Keyboard navigation for active quiz
+  useEffect(() => {
+    if (showResults || !current) return;
+
+    function handleGlobalKeyDown(e) {
+      // Ignore key events when user is typing in form controls
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'textarea' || tag === 'input') return;
+
+      const key = e.key.toLowerCase();
+
+      // Number keys 1–6
+      const num = parseInt(key, 10);
+      if (!isNaN(num) && num >= 1 && num <= current.options.length) {
+        e.preventDefault();
+        selectOption(num - 1);
+        return;
+      }
+
+      // Letter keys A–F
+      const letterIdx = ['a', 'b', 'c', 'd', 'e', 'f'].indexOf(key);
+      if (letterIdx >= 0 && letterIdx < current.options.length) {
+        e.preventDefault();
+        selectOption(letterIdx);
+        return;
+      }
+
+      // Enter or Space advances if question has been answered
+      if ((key === 'enter' || key === ' ') && (current.id in answers)) {
+        e.preventDefault();
+        handleNext();
+        return;
+      }
+
+      // ArrowLeft goes to previous question
+      if (key === 'arrowleft' && currentIdx > 0) {
+        e.preventDefault();
+        handlePrev();
+        return;
+      }
+
+      // ArrowRight advances if answered
+      if (key === 'arrowright' && (current.id in answers) && currentIdx < total - 1) {
+        e.preventDefault();
+        handleNext();
+        return;
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showResults, current, currentIdx, answers, total, selectOption, handleNext, handlePrev]);
 
   // Build graded results from the answers map
   const gradedResults = activeQuestions.map((q) => ({
@@ -222,6 +276,11 @@ export default function QuizMode({ questions }) {
             );
           })}
         </div>
+
+        {/* Keyboard shortcut hint */}
+        <p style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)', marginTop: '-0.25rem' }}>
+          💡 Tip: Press <kbd style={{ padding: '0.1rem 0.3rem', background: 'var(--clr-surface-2)', borderRadius: '4px' }}>1–4</kbd> (or A–D) to select · <kbd style={{ padding: '0.1rem 0.3rem', background: 'var(--clr-surface-2)', borderRadius: '4px' }}>Enter</kbd> / <kbd style={{ padding: '0.1rem 0.3rem', background: 'var(--clr-surface-2)', borderRadius: '4px' }}>Space</kbd> for next
+        </p>
 
         {/* Explanation shown immediately after the user answers */}
         {hasAnswered && current.explanation && (
