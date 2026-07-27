@@ -139,19 +139,27 @@ assert('api.js fetch does not include GEMINI_API_KEY', !apiSrc.includes('GEMINI_
 assert('api.js fetch does not include apiKey variable', !apiSrc.includes('apiKey'));
 
 // ─────────────────────────────────────────────────────────────
-// Test 6: AbortController / stale-response logic in api.js
+// Test 6: AbortController / stale-response vs timeout classification in api.js
 // ─────────────────────────────────────────────────────────────
-console.log('\n[6] Stale response / AbortController logic:');
+console.log('\n[6] Stale response vs Timeout classification logic:');
 
-// Test that aborting a signal returns isCancelled: true
-// We simulate by passing an already-aborted signal
 import { generateStudySet } from '../src/utils/api.js';
 
-const ac = new AbortController();
-ac.abort(); // abort immediately — simulates "new request started"
-const staleResult = await generateStudySet('test topic', ac.signal);
-assert('pre-aborted signal → isCancelled: true', staleResult.isCancelled === true);
-assert('pre-aborted signal → no error state shown (caller returns early)', staleResult.error === 'cancelled');
+// Pre-aborted signal check
+const acPre = new AbortController();
+acPre.abort();
+const stalePreResult = await generateStudySet('test topic', acPre.signal);
+assert('pre-aborted signal → isCancelled: true', stalePreResult.isCancelled === true);
+assert('pre-aborted signal → no error state shown (error: "cancelled")', stalePreResult.error === 'cancelled');
+
+// In-flight caller abort check
+const acInFlight = new AbortController();
+const promiseInFlight = generateStudySet('test topic', acInFlight.signal);
+acInFlight.abort();
+const staleInFlightResult = await promiseInFlight;
+assert('in-flight caller abort → isCancelled: true', staleInFlightResult.isCancelled === true);
+assert('in-flight caller abort → error: "cancelled"', staleInFlightResult.error === 'cancelled');
+assert('in-flight caller abort → isTimeout is false', staleInFlightResult.isTimeout !== true);
 
 // ─────────────────────────────────────────────────────────────
 // Test 7: Timeout value is set to 20 seconds in source
