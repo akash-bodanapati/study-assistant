@@ -899,3 +899,15 @@
 @media (max-width: 400px) {
   .flashcard-dots { display: none; }
 }
+
+/* ---------- Focus States (Accessibility) ---------- */
+.flashcard-card:focus-visible,
+.quiz-option:focus-visible,
+.tab-btn:focus-visible,
+.flashcard-dot:focus-visible,
+.btn:focus-visible,
+.input-panel-textarea:focus-visible {
+  outline: 2px solid var(--clr-accent-light) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 4px var(--clr-accent-glow) !important;
+}
