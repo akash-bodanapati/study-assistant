@@ -22,6 +22,12 @@
   - `correctIndex` is an integer strictly within `[0, options.length - 1]`.
 - **Rationale**: LLMs using structured JSON mode can still occasionally emit schema violations (e.g., `correctIndex = 5` for a 4-option question). Catching this at runtime prevents React rendering crashes and displays a friendly Retry UI card instead.
 
+### 4. AI Honesty & Topic Disclosure (Specific vs Unknown Topics)
+- **Problem**: When asked about specific recent, future, or unverified events (e.g., "IPL 2026"), LLMs often generate general background content while still reusing the specific topic title ("IPL 2026"), falsely implying the output directly answers the specific event.
+- **Decision**: Updated system prompt instructions in `api/generate.js` to distinguish two input cases:
+  - **(a) Specific/Future/Unverified Topics** (e.g., "IPL 2026", "2028 Election Results"): The model generates foundational concepts it DOES know confidently, but MUST explicitly disclose this shift by appending `" (General Overview)"` to the `"topic"` label (e.g., `"IPL (General Overview)"`).
+  - **(b) Gibberish/Meaningless Input** (e.g., `"asdfghjkl123"`): The model sets `"topic"` to `"General Study Set"` with learning strategies, without adding disclosure tags.
+
 ---
 
 ## 🐛 Real Bugs Found & Resolved During Development

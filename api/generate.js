@@ -7,20 +7,16 @@
  * Flow:
  *  1. Receive { text } from the browser's POST body.
  *  2. Build a system prompt instructing Gemini to return ONLY the JSON contract.
- *  3. Call Gemini with responseMimeType: "application/json" — this forces the
- *     model into structured output mode so it returns raw JSON rather than prose.
- *     We still validate the response ourselves below because the model can
- *     occasionally return JSON that technically parses but has wrong shapes or
- *     out-of-range values (e.g. correctIndex pointing beyond the options array).
- *  4. Parse and lightly validate the response, then forward it to the browser.
- *  5. On any failure, return a clear { error: "..." } object — never a raw crash.
+ *  3. Enforce AI honesty: specific topics beyond verified knowledge (e.g. IPL 2026)
+ *     return foundational knowledge with topic disclosure (e.g. "IPL (General Overview)").
+ *     Gibberish inputs fall back to "General Study Set" without disclosure tags.
+ *  4. Call Gemini with responseMimeType: "application/json".
+ *  5. Parse, validate, and forward to browser.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// --- JSON contract schema description embedded in the system prompt ---
-// We describe the shape in natural language because Gemini's JSON mode
-// already enforces structure; the prose description adds semantic clarity.
+// --- JSON contract schema & AI honesty rules embedded in the system prompt ---
 const SYSTEM_PROMPT = `You are a study assistant that generates learning materials.
 When given notes or a topic, you must respond with ONLY valid JSON — no markdown,
 no code fences, no prose, just the raw JSON object.
@@ -42,12 +38,21 @@ The JSON must exactly match this structure:
   ]
 }
 
-Rules:
+Rules & Constraints:
 - Generate exactly 8 flashcards (front = concise question/concept, back = clear answer).
 - Generate exactly 6 quiz questions, each with exactly 4 options.
 - correctIndex must be 0, 1, 2, or 3 — never out of range.
 - All strings must be non-empty.
-- Do not wrap the JSON in markdown code fences or add any text outside the JSON.`;
+- Do not wrap the JSON in markdown code fences or add any text outside the JSON.
+
+Handling Input & Topic Disclosure (AI Honesty):
+1. SPECIFIC, RECENT, OR FUTURE TOPICS (e.g. "IPL 2026", "2028 Election Results", "iPhone 18 Specs"):
+   When requested content contains specific recent, future, or unverified facts beyond your confident knowledge, generate flashcards and quiz questions based on the foundational concepts you DO know confidently (e.g. general IPL tournament rules/history).
+   DISCLOSURE RULE: You MUST explicitly disclose this in the "topic" field by framing it as a general overview (e.g. "IPL (General Overview)" or "US Elections (General Overview)") rather than falsely claiming it covers the specific unverified event.
+2. GIBBERISH / MEANINGLESS INPUT (e.g. "asdfghjkl123"):
+   Set the "topic" field to "General Study Set" and generate content about effective learning techniques. Do NOT add disclosure tags to gibberish.
+3. STANDARD TOPICS (e.g. "Photosynthesis", "World War II"):
+   Use a clean, concise topic title (e.g. "Photosynthesis").`;
 
 export default async function handler(req, res) {
   // Only accept POST requests
@@ -73,19 +78,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Initialize Gemini SDK with the server-side API key.
-    // responseMimeType: "application/json" puts the model into structured-output
-    // mode so it returns raw JSON rather than markdown prose. We still validate
-    // below because the model can return JSON that parses correctly but has
-    // wrong field shapes or out-of-range correctIndex values.
+    // Initialize Gemini SDK with server-side API key and JSON response mode
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         responseMimeType: 'application/json',
-        // Moderate temperature: creative enough for varied content,
-        // low enough to stay within the strict JSON schema.
         temperature: 0.7,
         maxOutputTokens: 4096,
       },
@@ -96,8 +95,6 @@ export default async function handler(req, res) {
     const result = await model.generateContent(userPrompt);
     const rawText = result.response.text();
 
-    // Parse the JSON response — the model should return clean JSON due to
-    // responseMimeType: "application/json", but we still wrap in try/catch
     let parsed;
     try {
       parsed = JSON.parse(rawText);
@@ -108,8 +105,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Light server-side sanity check before forwarding to frontend
-    // (The frontend also validates; this catches obvious failures early)
     if (!parsed || typeof parsed !== 'object') {
       return res.status(502).json({ error: 'AI response was not a JSON object.' });
     }
@@ -124,7 +119,6 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('Gemini API error:', err);
 
-    // Surface a friendly error without leaking internal details
     const message = err?.message ?? 'Unknown error';
     if (message.includes('quota') || message.includes('rate') || message.includes('429')) {
       return res.status(429).json({ error: 'API rate limit exceeded. Please wait a moment and try again.' });
