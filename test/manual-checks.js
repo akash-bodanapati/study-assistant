@@ -178,7 +178,8 @@ console.log('\n[8] FlashcardViewer component keying & flip state isolation:');
 const viewerSrc = readFileSync(join(__dirname, '../src/components/FlashcardViewer.jsx'), 'utf-8');
 assert('FlashcardCard subcomponent exists', viewerSrc.includes('function FlashcardCard'));
 assert('FlashcardCard is keyed by card.id or currentIndex', viewerSrc.includes('key={current.id'));
-assert('FlashcardCard initializes isFlipped to false on mount', viewerSrc.includes('const [isFlipped, setIsFlipped] = useState(false)'));
+assert('FlashcardViewer attaches global Space keydown listener', viewerSrc.includes("key === ' '"));
+assert('FlashcardViewer blurs buttons on navigation click', viewerSrc.includes('e.currentTarget.blur()'));
 
 // ─────────────────────────────────────────────────────────────
 // Summary

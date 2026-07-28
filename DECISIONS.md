@@ -42,6 +42,14 @@
   - **Stale-Response Cancellation (M5)**: Detects `signal.aborted` or reason `'caller_abort'` → returns `{ isCancelled: true, error: 'cancelled' }`. `App.jsx` drops stale responses silently without displaying error UI.
   - **Client-side Timeout (M4)**: Detects `timeoutController.signal.aborted` or reason `'timeout'` → returns `{ isTimeout: true, error: 'Request timed out after 20 seconds...' }`. `App.jsx` renders `ErrorState` with the timeout message and Retry button.
 
+### Bug 4: Space Key Conflict with Focused Navigation Buttons
+- **Issue**: After clicking "Next", "Prev", or a dot indicator with the mouse, the clicked button retained browser focus. Pressing `Space` afterward re-triggered the native button `click` action (advancing or retreating cards) instead of flipping the card as promised by the UI hint.
+- **Root Cause**: Browser focus remained on the `<button>` element after click. Since the previous keydown handler was scoped to `.flashcard-card`, pressing `Space` fired the browser's default button activation behavior.
+- **Fix**: Implemented a two-part resolution in `FlashcardViewer.jsx`:
+  1. Call `e.currentTarget.blur()` in `goNext`, `goPrev`, and `handleDotClick` to clear focus from buttons immediately upon mouse interaction.
+  2. Mounted a global `keydown` event listener in `FlashcardViewer` that catches `Space` (when not inside `<textarea>` / `<input>`), calls `e.preventDefault()`, blurs any remaining button focus, and triggers `flipCard()`.
+- **Verification**: Verified via `test/test-flashcard-space-key.js` that clicking Next/Prev/Dot followed by pressing `Space` reliably flips the active card's face without re-triggering navigation.
+
 ---
 
 ## ⌨️ Accessibility & Keyboard Enhancements

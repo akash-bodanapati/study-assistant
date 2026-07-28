@@ -3,45 +3,21 @@
  * Interactive flashcard component:
  *  - Displays one card at a time with 3D flip animation (front/back)
  *  - Prev/Next navigation and dot position indicators
- *  - Keyed card component ensures flip state and CSS transition
- *    never leak or flash when switching cards.
+ *  - Global Space/Enter/Arrow keyboard shortcuts so Space ALWAYS flips the card,
+ *    even after clicking Next, Prev, or dot indicators with the mouse.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
- * Single card component — keyed by card.id in the parent.
- * When the card ID changes, React unmounts the old card and mounts a fresh one
- * with isFlipped initialized to false. This prevents CSS rotation transitions
- * or answer content from flashing when navigating between cards.
+ * Single card component — rendered with key={current.id || currentIndex} in parent.
  */
-function FlashcardCard({ card, onPrev, onNext, isFirst, isLast }) {
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  const flipCard = useCallback(() => {
-    setIsFlipped((f) => !f);
-  }, []);
-
-  // Keyboard navigation when card is focused
-  function handleKeyDown(e) {
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      flipCard();
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      if (!isFirst) onPrev();
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      if (!isLast) onNext();
-    }
-  }
-
+function FlashcardCard({ card, isFlipped, onFlip }) {
   return (
     <div className="flashcard-scene">
       <div
         id={`flashcard-${card.id}`}
         className={`flashcard-card ${isFlipped ? 'flipped' : ''}`}
-        onClick={flipCard}
-        onKeyDown={handleKeyDown}
+        onClick={onFlip}
         tabIndex={0}
         role="button"
         aria-label={
@@ -75,21 +51,75 @@ function FlashcardCard({ card, onPrev, onNext, isFirst, isLast }) {
 
 export default function FlashcardViewer({ flashcards }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const total = flashcards.length;
   const current = flashcards[currentIndex];
 
-  const goTo = useCallback((idx) => {
-    setCurrentIndex(idx);
+  const flipCard = useCallback(() => {
+    setIsFlipped((f) => !f);
   }, []);
 
-  const goPrev = useCallback(() => {
+  const goTo = useCallback((idx) => {
+    setCurrentIndex(idx);
+    setIsFlipped(false);
+  }, []);
+
+  const goPrev = useCallback((e) => {
+    if (e?.currentTarget && typeof e.currentTarget.blur === 'function') {
+      e.currentTarget.blur();
+    }
     if (currentIndex > 0) goTo(currentIndex - 1);
   }, [currentIndex, goTo]);
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback((e) => {
+    if (e?.currentTarget && typeof e.currentTarget.blur === 'function') {
+      e.currentTarget.blur();
+    }
     if (currentIndex < total - 1) goTo(currentIndex + 1);
   }, [currentIndex, total, goTo]);
+
+  const handleDotClick = useCallback((idx, e) => {
+    if (e?.currentTarget && typeof e.currentTarget.blur === 'function') {
+      e.currentTarget.blur();
+    }
+    goTo(idx);
+  }, [goTo]);
+
+  // Global keydown listener so Space ALWAYS flips the card, regardless of button focus
+  useEffect(() => {
+    function handleKeyDown(e) {
+      // Don't intercept when user is typing in form controls
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'textarea' || tag === 'input') return;
+
+      const key = e.key;
+
+      if (key === ' ' || key === 'Spacebar') {
+        e.preventDefault();
+        // Blur any focused button so browser native click doesn't re-trigger
+        if (e.target && typeof e.target.blur === 'function' && e.target.tagName?.toLowerCase() === 'button') {
+          e.target.blur();
+        }
+        flipCard();
+      } else if (key === 'Enter') {
+        // If focus is not on a button, Enter flips the card
+        if (e.target?.tagName?.toLowerCase() !== 'button') {
+          e.preventDefault();
+          flipCard();
+        }
+      } else if (key === 'ArrowLeft') {
+        e.preventDefault();
+        if (currentIndex > 0) goTo(currentIndex - 1);
+      } else if (key === 'ArrowRight') {
+        e.preventDefault();
+        if (currentIndex < total - 1) goTo(currentIndex + 1);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, total, flipCard, goTo]);
 
   const progressPct = total > 0 ? ((currentIndex + 1) / total) * 100 : 0;
 
@@ -115,14 +145,12 @@ export default function FlashcardViewer({ flashcards }) {
         <div className="progress-bar-fill" style={{ width: `${progressPct}%` }} />
       </div>
 
-      {/* Keyed flashcard item — keying on card.id ensures a fresh DOM node and reset flip state */}
+      {/* Keyed card component — ensures a fresh DOM node and reset flip state on card change */}
       <FlashcardCard
         key={current.id || currentIndex}
         card={current}
-        onPrev={goPrev}
-        onNext={goNext}
-        isFirst={currentIndex === 0}
-        isLast={currentIndex === total - 1}
+        isFlipped={isFlipped}
+        onFlip={flipCard}
       />
 
       {/* Navigation: Prev / dot indicators / Next */}
@@ -143,7 +171,7 @@ export default function FlashcardViewer({ flashcards }) {
             <button
               key={card.id || idx}
               className={`flashcard-dot ${idx === currentIndex ? 'active' : ''}`}
-              onClick={() => goTo(idx)}
+              onClick={(e) => handleDotClick(idx, e)}
               role="tab"
               aria-selected={idx === currentIndex}
               aria-label={`Go to card ${idx + 1}`}
