@@ -22,11 +22,14 @@
   - `correctIndex` is an integer strictly within `[0, options.length - 1]`.
 - **Rationale**: LLMs using structured JSON mode can still occasionally emit schema violations (e.g., `correctIndex = 5` for a 4-option question). Catching this at runtime prevents React rendering crashes and displays a friendly Retry UI card instead.
 
-### 4. AI Honesty & Topic Disclosure (Specific vs Unknown Topics)
-- **Problem**: When asked about specific recent, future, or unverified events (e.g., "IPL 2026"), LLMs often generate general background content while still reusing the specific topic title ("IPL 2026"), falsely implying the output directly answers the specific event.
-- **Decision**: Updated system prompt instructions in `api/generate.js` to distinguish two input cases:
-  - **(a) Specific/Future/Unverified Topics** (e.g., "IPL 2026", "2028 Election Results"): The model generates foundational concepts it DOES know confidently, but MUST explicitly disclose this shift by appending `" (General Overview)"` to the `"topic"` label (e.g., `"IPL (General Overview)"`).
-  - **(b) Gibberish/Meaningless Input** (e.g., `"asdfghjkl123"`): The model sets `"topic"` to `"General Study Set"` with learning strategies, without adding disclosure tags.
+### 4. AI Honesty & Topic Disclosure (Specific vs Unknown vs Gibberish Tokens)
+- **Problem**:
+  1. Specific unverified/future topics (e.g., "IPL 2026") were generating general background content while silently reusing the specific topic title ("IPL 2026"), falsely implying a specific answer.
+  2. Short alphanumeric tokens/codes (e.g., "jyuf767", "x9k2m") were being interpreted by the LLM as obscure codes, prompting it to generate hollow meta-questions *about the literal string itself* ("How many characters in jyuf767?", "Is jyuf767 case-sensitive?").
+- **Decision**: Updated system prompt instructions in `api/generate.js` to distinguish three input cases:
+  - **(a) Specific/Future/Unverified Topics** (e.g., "IPL 2026", "2028 Election Results"): Generates foundational concepts the model knows confidently, and MUST explicitly disclose this shift by appending `" (General Overview)"` to the `"topic"` label (e.g., `"IPL (General Overview)"`).
+  - **(b) Gibberish / Random Tokens** (e.g., `"asdfghjkl"`, `"jyuf767"`, `"x9k2m"`): Sets `"topic"` to `"General Study Set"` providing high-quality study strategies/learning techniques. **Strictly forbids meta-questions about the string literal**. No disclosure tags added for gibberish.
+  - **(c) Standard Topics** (e.g., `"Photosynthesis"`): Uses clean, concise topic titles without extra tags.
 
 ---
 

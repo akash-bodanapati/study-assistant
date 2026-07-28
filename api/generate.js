@@ -7,9 +7,10 @@
  * Flow:
  *  1. Receive { text } from the browser's POST body.
  *  2. Build a system prompt instructing Gemini to return ONLY the JSON contract.
- *  3. Enforce AI honesty: specific topics beyond verified knowledge (e.g. IPL 2026)
- *     return foundational knowledge with topic disclosure (e.g. "IPL (General Overview)").
- *     Gibberish inputs fall back to "General Study Set" without disclosure tags.
+ *  3. Enforce AI honesty:
+ *     - Specific/future topics (e.g. "IPL 2026") return foundational knowledge with topic disclosure (e.g. "IPL (General Overview)").
+ *     - Gibberish, random alphanumeric tokens (e.g. "jyuf767"), or non-academic codes fall back to "General Study Set" (study strategies).
+ *     - Meta-questions about the string itself (e.g. "How many characters in jyuf767?") are strictly forbidden.
  *  4. Call Gemini with responseMimeType: "application/json".
  *  5. Parse, validate, and forward to browser.
  */
@@ -49,8 +50,10 @@ Handling Input & Topic Disclosure (AI Honesty):
 1. SPECIFIC, RECENT, OR FUTURE TOPICS (e.g. "IPL 2026", "2028 Election Results", "iPhone 18 Specs"):
    When requested content contains specific recent, future, or unverified facts beyond your confident knowledge, generate flashcards and quiz questions based on the foundational concepts you DO know confidently (e.g. general IPL tournament rules/history).
    DISCLOSURE RULE: You MUST explicitly disclose this in the "topic" field by framing it as a general overview (e.g. "IPL (General Overview)" or "US Elections (General Overview)") rather than falsely claiming it covers the specific unverified event.
-2. GIBBERISH / MEANINGLESS INPUT (e.g. "asdfghjkl123"):
-   Set the "topic" field to "General Study Set" and generate content about effective learning techniques. Do NOT add disclosure tags to gibberish.
+2. GIBBERISH / RANDOM CODES / MEANINGLESS TOKENS (e.g. "asdfghjkl", "jyuf767", "x9k2m", "123456"):
+   This includes random character strings, keyboard mashing, short non-word alphanumeric tokens, or any input lacking a recognizable real-world academic subject.
+   CRITICAL RULE — NO META-QUESTIONS: NEVER generate meta-content or questions ABOUT the input string itself (e.g. NEVER ask "How many characters are in jyuf767?", "Is jyuf767 case-sensitive?", or guess database contexts for random tokens).
+   FALLBACK ACTION: Set the "topic" field to "General Study Set" and generate high-quality flashcards and quiz questions on general study strategies, active recall techniques, and effective learning methods. Do NOT add disclosure tags to gibberish.
 3. STANDARD TOPICS (e.g. "Photosynthesis", "World War II"):
    Use a clean, concise topic title (e.g. "Photosynthesis").`;
 

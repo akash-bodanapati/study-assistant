@@ -31,6 +31,8 @@ assert('Prompt contains SPECIFIC/FUTURE topic disclosure rule', apiSrc.includes(
 assert('Prompt specifies appending (General Overview) for unverified/future events', apiSrc.includes('(General Overview)'));
 assert('Prompt contains GIBBERISH fallback rule to "General Study Set"', apiSrc.includes('GIBBERISH') && apiSrc.includes('General Study Set'));
 assert('Prompt specifies NO disclosure tags for gibberish', apiSrc.includes('Do NOT add disclosure tags to gibberish'));
+assert('Prompt covers random alphanumeric tokens (e.g. jyuf767)', apiSrc.includes('jyuf767'));
+assert('Prompt strictly forbids meta-questions about string literals', apiSrc.includes('NO META-QUESTIONS') && apiSrc.includes('How many characters are in jyuf767?'));
 assert('Prompt maintains 8 flashcards rule', apiSrc.includes('8 flashcards'));
 assert('Prompt maintains 6 quiz questions rule', apiSrc.includes('6 quiz questions'));
 
