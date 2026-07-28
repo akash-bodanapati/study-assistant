@@ -55,7 +55,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 npm start
 ```
 
-This runs both the Express API server (port 3001) and Vite frontend (port 5173) simultaneously. Open [http://localhost:5173](http://localhost:5173) in your browser.
+This runs both the Express API server (port 3001) and Vite frontend (port 5173) simultaneously via `concurrently`. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
@@ -100,12 +100,12 @@ The backend and frontend communicate using this structured JSON shape:
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Automated Testing Suite
 
-Run the automated test suite covering validation edge cases, AbortController stale cancellation, timeout handling, keyboard nav, and accessibility:
+Run the full verification suite covering validation edge cases, AbortController stale cancellation, timeout handling, keyboard nav, accessibility, space-key focus fix, and tab-switch persistence:
 
 ```bash
-# Run complete check suite (28/28 tests)
+# Run unified check suite (29/29 tests)
 node test/manual-checks.js
 
 # Run individual test scripts
@@ -114,30 +114,47 @@ node test/test-stale-response-trigger.js
 node test/test-malformed-response-trigger.js
 node test/test-quiz-keyboard.js
 node test/test-accessibility.js
+node test/test-flashcard-space-key.js
+node test/test-tab-switch-quiz-persistence.js
+node test/test-ai-honesty-prompt.js
 ```
+
+---
+
+## ⏱️ Time Spent
+
+| Phase / Milestone | Description | Approx. Time |
+|-------------------|-------------|--------------|
+| **M1–M3 Scaffolding & Proxy** | Vite setup, Express API proxy, Gemini SDK integration | ~45 min |
+| **M4–M5 Validation & Abort** | `validate.js` contract checks, `AbortController` stale response protection | ~35 min |
+| **M6–M8 UI Components** | Flashcard 3D viewer, Quiz mode with retest, empty/loading/error states | ~60 min |
+| **Mobile & Keyboard Pass** | Full mobile responsiveness audit, quiz key shortcuts, Space-key focus fix | ~40 min |
+| **State & AI Honesty Fixes** | Quiz tab-switch persistence fix, system prompt disclosure & gibberish rules | ~40 min |
+| **Testing & Docs** | Comprehensive Node test suite, README.md, DECISIONS.md audit | ~30 min |
+| **Total Time** | | **~4.2 hours** |
 
 ---
 
 ## 🤖 Honest AI-Usage Note
 
-This project was developed with the assistance of an AI coding agent (**Antigravity**, powered by Google DeepMind models) working under human pair-programming direction:
+This project was developed through human-directed pair programming with an AI coding agent (**Antigravity**, powered by Google DeepMind models):
 
-- **Human Guidance & Decisions**:
-  - Directed the overall milestone plan, component architecture, and UI aesthetic requirements.
-  - Specified key bug fixes (e.g., identifying the flashcard flip-state transition leak, requesting exact keyboard shortcut bindings for the quiz, and defining abort error classification behavior).
-  - Selected and verified model configuration (`gemini-3.5-flash-lite`).
+- **Human Direction & Decisions**:
+  - Defined product requirements, state machine design, and architectural constraints.
+  - Identified edge-case bugs during manual testing (e.g., flashcard flip-state transition leak, `AbortController` error classification, Space-key button focus collision, quiz tab-switch unmounting, and alphanumeric token fallback).
+  - Selected and configured `gemini-3.5-flash-lite` for structured output.
 - **AI Agent Execution**:
-  - Scaffolded React/Vite components, CSS design system, and backend Express proxy.
-  - Implemented `validate.js` schema validation and `api.js` AbortController logic.
-  - Authored automated test scripts in `test/`.
+  - Implemented React functional components (`App.jsx`, `FlashcardViewer.jsx`, `QuizMode.jsx`, etc.).
+  - Authored Express server proxy (`server/index.js` / `api/generate.js`) and CSS design system (`App.css` / `index.css`).
+  - Created automated Node verification test scripts in `test/`.
 
-All code has been reviewed, tested, and verified for correctness.
+All code has been reviewed, tested, and empirically verified.
 
 ---
 
 ## ⚠️ Known Limitations
 
 1. **AI Output Quantity**: Gemini occasionally returns slightly fewer than the requested 8 flashcards or 6 quiz questions. The app gracefully renders whichever valid items are returned.
-2. **No Persistence**: Study sets are held in React state and reset on page refresh.
+2. **Session-Only Persistence**: Study sets and quiz results are held in React component state and reset upon full browser page refresh.
 3. **English Optimization**: Prompts are tuned for English text inputs. Non-English notes may yield mixed-language output.
 4. **Free-Tier Quotas**: Heavy request volume may encounter Gemini free-tier rate limits (HTTP 429). The app surfaces a clear rate-limit message allowing the user to retry after ~60 seconds.
