@@ -49,7 +49,7 @@ function FlashcardCard({ card, isFlipped, onFlip }) {
   );
 }
 
-export default function FlashcardViewer({ flashcards }) {
+export default function FlashcardViewer({ flashcards, isActive = true }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -88,6 +88,8 @@ export default function FlashcardViewer({ flashcards }) {
 
   // Global keydown listener so Space ALWAYS flips the card, regardless of button focus
   useEffect(() => {
+    if (!isActive) return;
+
     function handleKeyDown(e) {
       // Don't intercept when user is typing in form controls
       const tag = e.target?.tagName?.toLowerCase();

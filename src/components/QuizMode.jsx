@@ -24,7 +24,7 @@ function getScoreInfo(correct, total) {
   return            { emoji: '💪', label: "Don't give up!", cls: 'poor'        };
 }
 
-export default function QuizMode({ questions }) {
+export default function QuizMode({ questions, isActive = true }) {
   // activeQuestions is either the full set or just the wrong-answer subset (retest)
   const [activeQuestions, setActiveQuestions] = useState(questions);
   const [currentIdx, setCurrentIdx]           = useState(0);
@@ -56,7 +56,7 @@ export default function QuizMode({ questions }) {
 
   // Keyboard navigation for active quiz
   useEffect(() => {
-    if (showResults || !current) return;
+    if (!isActive || showResults || !current) return;
 
     function handleGlobalKeyDown(e) {
       // Ignore key events when user is typing in form controls

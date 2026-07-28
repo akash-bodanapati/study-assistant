@@ -50,6 +50,12 @@
   2. Mounted a global `keydown` event listener in `FlashcardViewer` that catches `Space` (when not inside `<textarea>` / `<input>`), calls `e.preventDefault()`, blurs any remaining button focus, and triggers `flipCard()`.
 - **Verification**: Verified via `test/test-flashcard-space-key.js` that clicking Next/Prev/Dot followed by pressing `Space` reliably flips the active card's face without re-triggering navigation.
 
+### Bug 5: Quiz Progress & Score State Reset on Tab Switch
+- **Issue**: Completing a quiz or answering questions, switching to the "Flashcards" tab, and switching back to "Quiz" reset the quiz back to question 1 with all score and answer progress lost.
+- **Root Cause**: `App.jsx` rendered `{activeTab === 'quiz' && <QuizMode ... />}` conditionally, which unmounted `<QuizMode />` from the React component tree when switching to the Flashcards tab. Unmounting destroyed all local component state (`answers`, `currentIdx`, `showResults`, `isRetestMode`).
+- **Fix**: Updated `App.jsx` to render both tab panels persistently using HTML `hidden={activeTab !== ...}` and CSS `display: activeTab === ... ? 'block' : 'none'`. `QuizMode` remains mounted across tab switches, preserving full state (answers, current question, score card, and retest mode). When a new topic is generated (`studySet.topic` changes), `key={studySet.topic}` on `QuizMode` causes React to unmount the old instance and mount a fresh `QuizMode`, starting a clean quiz for the new topic.
+- **Verification**: Verified via `test/test-tab-switch-quiz-persistence.js` that tab switching preserves all quiz state while new topic generation resets it.
+
 ---
 
 ## ⌨️ Accessibility & Keyboard Enhancements

@@ -5,12 +5,8 @@
  *  - Empty state / Loading / Error / Results rendering
  *  - Stale-response prevention via AbortController
  *  - Response validation before displaying
- *
- * State machine:
- *   'idle'    → empty state shown, user can type and submit
- *   'loading' → spinner/skeleton shown, submit button disabled
- *   'error'   → error panel shown with Retry button
- *   'results' → flashcard viewer + quiz tabs shown
+ *  - Tab panels persistent mounting so Quiz and Flashcard state
+ *    persist across tab switches, while fresh topic generation resets quiz state.
  */
 import { useState, useRef, useCallback } from 'react';
 import './App.css';
@@ -24,8 +20,6 @@ import QuizMode         from './components/QuizMode';
 
 import { generateStudySet } from './utils/api';
 import { validateStudySet }  from './utils/validate';
-// M1 mock: used during scaffolding; commented out once the real API is wired
-// import { MOCK_STUDY_SET } from './utils/mockData';
 
 export default function App() {
   const [appState, setAppState]     = useState('idle');    // 'idle' | 'loading' | 'error' | 'results'
@@ -47,7 +41,6 @@ export default function App() {
    */
   const handleSubmit = useCallback(async (text) => {
     // --- Stale-response protection (M5) ---
-    // If a previous request is still in flight, cancel it before starting a new one.
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -60,13 +53,8 @@ export default function App() {
     setStudySet(null);
     setActiveTab('cards');
 
-    // --- Real API call (M3) ---
-    // generateStudySet posts to /api/generate, applies a 20s client-side timeout,
-    // and returns { data } on success or { error, isTimeout, isCancelled } on failure.
     const result = await generateStudySet(text, controller.signal);
 
-    // If this request was cancelled because a newer one started, discard the result.
-    // This is the stale-response check: only accept results for the most recent request.
     if (result.isCancelled) return;
 
     if (result.error) {
@@ -75,10 +63,6 @@ export default function App() {
       return;
     }
 
-    // --- Response validation (M4) ---
-    // Even in structured-output mode the model can return unexpected shapes, so we
-    // always validate before rendering. validateStudySet checks all required fields,
-    // correct types, non-empty arrays, and correctIndex bounds.
     const validation = validateStudySet(result.data);
     if (!validation.valid) {
       setError({
@@ -175,23 +159,37 @@ export default function App() {
               </div>
             </div>
 
+            {/*
+              Both tab panels stay mounted so state (quiz progress, answers, score screen)
+              persists across tab switches. When a new topic is generated, key={studySet.topic}
+              causes React to unmount and remount a fresh QuizMode for the new topic.
+            */}
+
             {/* Flashcard panel */}
-            {activeTab === 'cards' && (
-              <div id="panel-cards" role="tabpanel" aria-labelledby="tab-cards">
-                <FlashcardViewer flashcards={studySet.flashcards} />
-              </div>
-            )}
+            <div
+              id="panel-cards"
+              role="tabpanel"
+              aria-labelledby="tab-cards"
+              hidden={activeTab !== 'cards'}
+              style={{ display: activeTab === 'cards' ? 'block' : 'none' }}
+            >
+              <FlashcardViewer flashcards={studySet.flashcards} isActive={activeTab === 'cards'} />
+            </div>
 
             {/* Quiz panel */}
-            {activeTab === 'quiz' && (
-              <div id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz">
-                {/*
-                  Key the QuizMode on the topic so it fully resets whenever a new
-                  study set is loaded — prevents stale quiz state from previous runs.
-                */}
-                <QuizMode key={studySet.topic} questions={studySet.quiz} />
-              </div>
-            )}
+            <div
+              id="panel-quiz"
+              role="tabpanel"
+              aria-labelledby="tab-quiz"
+              hidden={activeTab !== 'quiz'}
+              style={{ display: activeTab === 'quiz' ? 'block' : 'none' }}
+            >
+              <QuizMode
+                key={studySet.topic}
+                questions={studySet.quiz}
+                isActive={activeTab === 'quiz'}
+              />
+            </div>
           </section>
         )}
       </main>
