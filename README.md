@@ -1,6 +1,11 @@
 # 📚 Study Assistant
+🔗 **Live App:** [study-assistant-9cu620sp2-akash-bodanapati-1365s-projects.vercel.app](https://study-assistant-9cu620sp2-akash-bodanapati-1365s-projects.vercel.app/)
+📦 **GitHub Repo:** [github.com/akash-bodanapati/study-assistant](https://github.com/akash-bodanapati/study-assistant)
+🎥 **Demo Recording:** https://drive.google.com/file/d/1T4UPQex0thXvv0pT5zvLE-W1jqSykJ_l/view?usp=sharing
 
-> **AI-powered flashcard and quiz generator** — paste your notes or type a topic, and instantly get interactive study materials. Built with React, Vite, Express, and Google Gemini AI.
+
+
+**AI-powered flashcard and quiz generator** — paste your notes or type a topic, and instantly get interactive study materials. Built with React, Vite, Express, and Google Gemini AI.
 
 ---
 
