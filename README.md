@@ -105,7 +105,7 @@ The backend and frontend communicate using this structured JSON shape:
 Run the full verification suite covering validation edge cases, AbortController stale cancellation, timeout handling, keyboard nav, accessibility, space-key focus fix, and tab-switch persistence:
 
 ```bash
-# Run unified check suite (29/29 tests)
+# Run unified check suite (28/28 tests)
 node test/manual-checks.js
 
 # Run individual test scripts
@@ -154,7 +154,8 @@ All code has been reviewed, tested, and empirically verified.
 
 ## ⚠️ Known Limitations
 
-1. **AI Output Quantity**: Gemini occasionally returns slightly fewer than the requested 8 flashcards or 6 quiz questions. The app gracefully renders whichever valid items are returned.
-2. **Session-Only Persistence**: Study sets and quiz results are held in React component state and reset upon full browser page refresh.
-3. **English Optimization**: Prompts are tuned for English text inputs. Non-English notes may yield mixed-language output.
-4. **Free-Tier Quotas**: Heavy request volume may encounter Gemini free-tier rate limits (HTTP 429). The app surfaces a clear rate-limit message allowing the user to retry after ~60 seconds.
+1. **AI Honesty / Gibberish Detection (understood, unresolved edge case)**: The system prompt instructs Gemini to detect gibberish and fall back to a "General Study Set", and to disclose topic pivots for specific/future events. However, this is enforced only at the prompt level — there is no structural mechanism that can guarantee compliance. Edge cases exist: a sufficiently ambiguous input (e.g., a real-looking but meaningless string) may not be reliably classified as gibberish, and the model may occasionally generate plausible-sounding but inaccurate content without disclosure. This was partially mitigated by tightening the system prompt, but remains an inherent LLM limitation that cannot be fully fixed without a secondary validation layer or ground-truth lookup.
+2. **AI Output Quantity**: Gemini occasionally returns slightly fewer than the requested 8 flashcards or 6 quiz questions. The app gracefully renders whichever valid items are returned.
+3. **Session-Only Persistence**: Study sets and quiz results are held in React component state and reset upon full browser page refresh.
+4. **English Optimization**: Prompts are tuned for English text inputs. Non-English notes may yield mixed-language output.
+5. **Free-Tier Quotas**: Heavy request volume may encounter Gemini free-tier rate limits (HTTP 429). The app surfaces a clear rate-limit message allowing the user to retry after ~60 seconds.
