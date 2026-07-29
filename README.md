@@ -100,27 +100,6 @@ The backend and frontend communicate using this structured JSON shape:
 
 ---
 
-## 🧪 Automated Testing Suite
-
-Run the full verification suite covering validation edge cases, AbortController stale cancellation, timeout handling, keyboard nav, accessibility, space-key focus fix, and tab-switch persistence:
-
-```bash
-# Run unified check suite (28/28 tests)
-node test/manual-checks.js
-
-# Run individual test scripts
-node test/test-empty-state.js
-node test/test-stale-response-trigger.js
-node test/test-malformed-response-trigger.js
-node test/test-quiz-keyboard.js
-node test/test-accessibility.js
-node test/test-flashcard-space-key.js
-node test/test-tab-switch-quiz-persistence.js
-node test/test-ai-honesty-prompt.js
-```
-
----
-
 ## ⏱️ Time Spent
 
 | Phase / Milestone | Description | Approx. Time |
